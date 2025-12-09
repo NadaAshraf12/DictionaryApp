@@ -11,7 +11,6 @@ let startGui () =
         Text = "F# Dictionary Application",
         WindowState = FormWindowState.Maximized,
         BackColor = Color.WhiteSmoke,
-        Icon = new Icon(SystemIcons.Application, 32, 32),
         Padding = new Padding(0)
     )
 
@@ -70,7 +69,7 @@ let startGui () =
         Location = new Point(110, 15)
     )
 
-    wordRowPanel.Controls.AddRange [| lblWord; txtWord |]
+    wordRowPanel.Controls.AddRange [| lblWord :> Control; txtWord :> Control |]
     mainPanel.Controls.Add(wordRowPanel, 0, 0)
 
     // DEFINITION ROW - ثانياً
@@ -94,7 +93,7 @@ let startGui () =
         Multiline = true
     )
 
-    defRowPanel.Controls.AddRange [| lblDef; txtDef |]
+    defRowPanel.Controls.AddRange [| lblDef :> Control; txtDef :> Control |]
     mainPanel.Controls.Add(defRowPanel, 0, 1)
 
     // BUTTON PANEL
@@ -128,7 +127,8 @@ let startGui () =
     let btnLoad = makeButton "📂 Load" (Color.FromArgb(52, 73, 94)) 
 
     btnPanel.Controls.AddRange [|
-        btnAdd; btnUpdate; btnDelete; btnSearch; btnSave; btnLoad
+        btnAdd :> Control; btnUpdate :> Control; btnDelete :> Control; 
+        btnSearch :> Control; btnSave :> Control; btnLoad :> Control
     |]
 
     // STATUS BAR
@@ -166,11 +166,11 @@ let startGui () =
 
     // Add all controls to form بالترتيب الصحيح
     form.Controls.AddRange [|
-        listPanel       // يأتي أولاً لكن مع Dock Fill
-        btnPanel        // يأتي ثانياً فوق ListBox
-        mainPanel       // يأتي ثالثاً فوق Buttons
-        titlePanel      // يأتي رابعاً في الأعلى
-        statusPanel     // يأتي أخيراً في الأسفل
+        listPanel :> Control      // يأتي أولاً لكن مع Dock Fill
+        btnPanel :> Control       // يأتي ثانياً فوق ListBox
+        mainPanel :> Control      // يأتي ثالثاً فوق Buttons
+        titlePanel :> Control     // يأتي رابعاً في الأعلى
+        statusPanel :> Control    // يأتي أخيراً في الأسفل
     |]
 
     // LOGIC SECTION

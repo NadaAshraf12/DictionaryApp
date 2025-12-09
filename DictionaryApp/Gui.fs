@@ -182,14 +182,17 @@ let startGui () =
         statusLabel.ForeColor <- Color.White
 
     let refreshList () =
-        listBox.Items.Clear()
-        dict 
-        |> Map.toList
-        |> List.sortBy fst
-        |> List.iter (fun (word, definition) -> 
-            listBox.Items.Add(sprintf "📖 %s : %s" word definition) |> ignore
-        )
-        updateStatus (sprintf "Dictionary contains %d words" (Map.count dict))
+        try
+            listBox.Items.Clear()
+            dict 
+            |> Map.toList
+            |> List.sortBy fst
+            |> List.iter (fun (word, definition) -> 
+                listBox.Items.Add(sprintf "📖 %s : %s" word definition) |> ignore
+            )
+            updateStatus (sprintf "Dictionary contains %d words" (Map.count dict))
+        with
+        | ex -> updateStatus (sprintf "Error refreshing list: %s" ex.Message)
 
     let showSuccess msg =
         updateStatus msg
@@ -257,41 +260,45 @@ let startGui () =
     )
 
     btnSearch.Click.Add(fun _ ->
-        let wordToSearch = txtWord.Text.Trim()
-        if String.IsNullOrWhiteSpace(wordToSearch) then
-            showError "Please enter a word to search"
-        else
-            match findExact wordToSearch dict with
-            | Some d -> 
-                txtDef.Text <- d
-                updateStatus (sprintf "Found: %s" wordToSearch)
-                // البحث عن العنصر في ال ListBox وتحديده
-                let mutable foundIndex = -1
-                for i = 0 to listBox.Items.Count - 1 do
-                    if foundIndex = -1 then
-                        let item = listBox.Items.[i].ToString()
-                        if item.Contains(sprintf "📖 %s : " wordToSearch) then
-                            foundIndex <- i
-                if foundIndex <> -1 then
-                    listBox.SelectedIndex <- foundIndex
-            | None -> showInfo "Word not found in dictionary"
+        try
+            let wordToSearch = txtWord.Text.Trim()
+            if String.IsNullOrWhiteSpace(wordToSearch) then
+                showError "Please enter a word to search"
+            else
+                match findExact wordToSearch dict with
+                | Some d -> 
+                    txtDef.Text <- d
+                    updateStatus (sprintf "Found: %s" wordToSearch)
+                    // البحث عن العنصر في ال ListBox وتحديده
+                    try
+                        let mutable foundIndex = -1
+                        for i = 0 to listBox.Items.Count - 1 do
+                            if foundIndex = -1 then
+                                let item = listBox.Items.[i].ToString()
+                                if item.Contains(sprintf "📖 %s : " wordToSearch) then
+                                    foundIndex <- i
+                        if foundIndex <> -1 then
+                            listBox.SelectedIndex <- foundIndex
+                    with
+                    | ex -> updateStatus (sprintf "Found but error selecting: %s" ex.Message)
+                | None -> showInfo "Word not found in dictionary"
+        with
+        | ex -> showError (sprintf "Error during search: %s" ex.Message)
     )
 
     btnSave.Click.Add(fun _ ->
-        try
-            saveToFile filePath dict
-            showSuccess (sprintf "Dictionary saved to '%s' successfully!" filePath)
-        with
-        | ex -> showError (sprintf "Error saving file: %s" ex.Message)
+        match saveToFile filePath dict with
+        | Ok () -> showSuccess (sprintf "Dictionary saved to '%s' successfully!" filePath)
+        | Error msg -> showError msg
     )
 
     btnLoad.Click.Add(fun _ ->
-        try
-            dict <- loadFromFile filePath
+        match loadFromFile filePath with
+        | Ok loadedDict -> 
+            dict <- loadedDict
             refreshList()
-            showSuccess (sprintf "Dictionary loaded from '%s' successfully!" filePath)
-        with
-        | ex -> showError (sprintf "Error loading file: %s" ex.Message)
+            showSuccess (sprintf "Dictionary loaded from '%s' successfully! (%d words)" filePath (Map.count dict))
+        | Error msg -> showError msg
     )
 
     // Keyboard shortcuts
@@ -316,14 +323,17 @@ let startGui () =
 
     // ListBox selection event
     listBox.SelectedIndexChanged.Add(fun _ ->
-        if listBox.SelectedIndex <> -1 then
-            let selected = listBox.SelectedItem.ToString()
-            if selected.StartsWith("📖 ") then
-                let withoutEmoji = selected.Substring(2)
-                let parts = withoutEmoji.Split([|" : "|], StringSplitOptions.None)
-                if parts.Length >= 2 then
-                    txtWord.Text <- parts.[0]
-                    txtDef.Text <- parts.[1]
+        try
+            if listBox.SelectedIndex <> -1 then
+                let selected = listBox.SelectedItem.ToString()
+                if selected.StartsWith("📖 ") then
+                    let withoutEmoji = selected.Substring(2)
+                    let parts = withoutEmoji.Split([|" : "|], StringSplitOptions.None)
+                    if parts.Length >= 2 then
+                        txtWord.Text <- parts.[0]
+                        txtDef.Text <- parts.[1]
+        with
+        | ex -> updateStatus (sprintf "Error loading selection: %s" ex.Message)
     )
 
     // إضافة بيانات أولية للاختبار

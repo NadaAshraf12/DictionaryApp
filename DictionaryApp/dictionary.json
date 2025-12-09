@@ -1,6 +1,22 @@
 [
   {
-    "word": "nada",
-    "definition": "name"
+    "word": "Apple",
+    "definition": "A sweet red fruit"
+  },
+  {
+    "word": "Book",
+    "definition": "A collection of pages"
+  },
+  {
+    "word": "Computer",
+    "definition": "An electronic device"
+  },
+  {
+    "word": "Dictionary",
+    "definition": "A book that lists words"
+  },
+  {
+    "word": "اه",
+    "definition": "لغهع"
   }
 ]

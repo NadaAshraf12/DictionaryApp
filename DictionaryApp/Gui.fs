@@ -5,6 +5,7 @@ open System.Drawing
 open System.Windows.Forms
 open DictionaryCore
 open JsonStorage
+open System.IO
 
 let startGui () =
     let form = new Form(
@@ -175,7 +176,9 @@ let startGui () =
 
     // LOGIC SECTION
     let mutable dict = Map.empty
-    let filePath = @"D:\Backend\DictionaryApp\DictionaryApp\dictionary.json"
+    let filePath = 
+        let exeDir = AppDomain.CurrentDomain.BaseDirectory
+        Path.Combine(exeDir, "dictionary.json")
 
     let updateStatus message =
         statusLabel.Text <- message
@@ -261,29 +264,27 @@ let startGui () =
 
     btnSearch.Click.Add(fun _ ->
         try
-            let wordToSearch = txtWord.Text.Trim()
-            if String.IsNullOrWhiteSpace(wordToSearch) then
-                showError "Please enter a word to search"
+            let term = txtWord.Text.Trim()
+            if String.IsNullOrWhiteSpace(term) then
+                showError "Please enter a search term"
             else
-                match findExact wordToSearch dict with
-                | Some d -> 
-                    txtDef.Text <- d
-                    updateStatus (sprintf "Found: %s" wordToSearch)
-                    // البحث عن العنصر في ال ListBox وتحديده
-                    try
-                        let mutable foundIndex = -1
-                        for i = 0 to listBox.Items.Count - 1 do
-                            if foundIndex = -1 then
-                                let item = listBox.Items.[i].ToString()
-                                if item.Contains(sprintf "📖 %s : " wordToSearch) then
-                                    foundIndex <- i
-                        if foundIndex <> -1 then
-                            listBox.SelectedIndex <- foundIndex
-                    with
-                    | ex -> updateStatus (sprintf "Found but error selecting: %s" ex.Message)
-                | None -> showInfo "Word not found in dictionary"
+                let results = searchPartial term dict
+                if List.isEmpty results then
+                    txtDef.Clear()
+                    showInfo "No words found matching the term"
+                else
+                    // Show all results in listbox, highlight best match
+                    listBox.Items.Clear()
+                    results |> List.iter (fun (w, d) ->
+                        listBox.Items.Add(sprintf " %s : %s" w d) |> ignore
+                    )
+                    listBox.SelectedIndex <- 0
+                    let bestWord, bestDef = results.Head
+                    txtWord.Text <- bestWord
+                    txtDef.Text <- bestDef
+                    updateStatus (sprintf "Found %d match(es) for '%s'" (List.length results) term)
         with
-        | ex -> showError (sprintf "Error during search: %s" ex.Message)
+        | ex -> showError (sprintf "Search error: %s" ex.Message)
     )
 
     btnSave.Click.Add(fun _ ->
@@ -336,16 +337,22 @@ let startGui () =
         | ex -> updateStatus (sprintf "Error loading selection: %s" ex.Message)
     )
 
-    // إضافة بيانات أولية للاختبار
-    dict <- 
-        Map.empty
-        |> Map.add "Apple" "A sweet red fruit"
-        |> Map.add "Book" "A collection of pages"
-        |> Map.add "Computer" "An electronic device"
-        |> Map.add "Dictionary" "A book that lists words"
-    
-    // إعدادات أولية
+     // === INITIALIZATION: Start with empty dictionary, then try to load from file ===
+    dict <- Map.empty
+
+    // Try to load saved dictionary on startup
+    match loadFromFile filePath with
+    | Ok loadedDict -> 
+        dict <- loadedDict
+        refreshList()
+        updateStatus (sprintf "Loaded %d words from file" (Map.count dict))
+    | Error msg -> 
+        updateStatus "No saved dictionary found — starting fresh"
+        refreshList()  // Shows empty list
+
+    // Final setup
     txtWord.Focus() |> ignore
+    
     refreshList()
 
     form
